@@ -1,0 +1,59 @@
+### What "fast" means — and where latency comes from
+
+Your request path is exactly the right model: click → server → DB → server → external service → server → client. The property that matters is that **latency is additive along the chain, and the slowest hop dominates.** A single user-facing request often *fans out* into many backend calls, so the user doesn't experience your average component — they experience the sum, and they feel the worst hop.
+
+Keep two things separate that people lump together as "slow": **latency** (how long one request takes) and **throughput** (how many per second). Optimizing one can hurt the other — batching raises throughput but adds latency. That tradeoff is literally the core of LLM serving (continuous batching in vLLM is this exact knob).
+
+### The three numbers: latency, throughput, utilization
+
+**Latency — always percentiles, never the average.** The average hides the tail. p99 means 99% of requests are faster than this, 1% slower. The tail matters more than it looks because of fan-out: if one user request makes 10 backend calls each with a p99 of 100ms, the chance the *user* hits at least one slow call is roughly 10%, not 1%. So your user-facing p99 is driven by your components' p99s — this is Dean & Barroso's "tail at scale." For a bid submission, p99 *is* the fairness metric; the median bidder's experience is irrelevant if 1% of bids stall.
+
+**Throughput** — requests/second the system sustains. Measure it at saturation, not at idle.
+
+**Utilization** — percent of a resource in use, and your 60–80% target is correct. The reason is queuing theory: latency vs utilization isn't linear, it's a hockey stick. As utilization approaches 100%, queue length goes to infinity and latency blows up. The "knee" sits around 70–80%, so that's where you run — the headroom absorbs bursts. Past the knee, a tiny traffic increase causes a huge latency spike.
+
+Two frameworks worth adopting for dashboards: **RED** for services (Rate, Errors, Duration) and **USE** for resources (Utilization, Saturation, Errors).
+
+### The cardinal rule: measure, never guess
+
+"Never guess anything" is the whole discipline. Engineers' intuition about *where* time goes is wrong more often than right. The sequence is always **measure → find the actual bottleneck → fix that one thing → measure again.** Optimizing a component that isn't the bottleneck buys you nothing — that's Amdahl's law — and adds complexity.
+
+**Profiling** answers "where is this process spending time?" at the function level. A CPU profiler (flame graph) shows the hot functions, and the cost is often somewhere unglamorous: serialization, logging inside a hot loop, JSON parsing, an accidental O(n²).
+
+**Distributed tracing** answers the same question *across* services. Each request gets a trace ID; every component records a span with start/end timestamps. You see the request enter the gateway at T, hit the DB at T+5ms, wait 200ms there, call the external service, return — and the waterfall view shows exactly which span owns the latency. OpenTelemetry is the standard, and it's essentially non-negotiable once you have more than one service. Adding durations to your logs (your instinct) is the poor-man's version and a perfectly good start — structured logs with a measured duration per stage.
+
+### Databases — usually the first bottleneck
+
+**The N+1 problem.** You fetch a list (1 query), then loop and fetch related data per item (N queries) — 1 + N round trips. ORMs cause this *silently* through lazy loading: the code looks like a plain property access, but each access fires a query. Since every query carries round-trip + parse + plan overhead, N+1 is death by a thousand cuts. Fixes: **eager-load with a JOIN**, **batch into one `IN (…)` query**, or use the **DataLoader pattern** to coalesce. On your stack, watch Drizzle relation loading and make it explicit.
+
+**Indexes.** An index is a sorted lookup structure (B-tree by default) so the DB finds rows without scanning the whole table. But there's no free lunch — every index must be **updated on every insert/update/delete** and it costs storage. So an index trades write speed for read speed; you can't index everything. You index to match your **actual query patterns**: the columns in `WHERE`, `JOIN`, and `ORDER BY`. For composite indexes, **column order matters** (leftmost-prefix rule). An index also won't be used if it isn't selective enough, or if you wrap the column in a function.
+
+**Diagnosing a slow query — the concrete tool.** Don't guess whether it's the JOIN or a missing index: run `EXPLAIN ANALYZE` in Postgres. It shows the *actual* plan with real timings — `Seq Scan` (bad, full-table) vs `Index Scan`, where the row counts blow up, and whether the planner's row estimate matches reality. A large estimate-vs-actual mismatch means stale statistics, so run `ANALYZE`. That tells you precisely which part of the query owns the time. The workflow combines both tools: tracing finds *which* function issues the slow query, then `EXPLAIN ANALYZE` tells you *why* it's slow.
+
+**Connection pooling.** Opening a DB connection isn't free — TCP handshake, TLS, auth — and in Postgres each connection is a *process*, which is expensive. A pool keeps warm connections and hands them out, so you pay the setup cost once. For Postgres at scale you often add **PgBouncer** in front. Mind the pool size: too small starves you, too large thrashes Postgres — more connections do *not* mean more throughput past a point, since it's roughly core-bound.
+
+Indexing, optimized queries, and connection pooling together are your baseline DB kit *before* you reach for caching.
+
+### Caching
+
+The idea: store the result of an expensive operation so you don't recompute it — in memory or in something like Redis. But caching trades *consistency* for *speed*, so the hard part is invalidation. (The old joke: the two hard problems in CS are cache invalidation and naming things.)
+
+**Local vs distributed.** Local (in-process) is fastest — no network hop — but it's per-instance, so each server holds its own copy and they drift, and it dies on restart. Distributed (Redis) is shared and consistent across all instances, at the cost of a network round trip. Many systems layer both: an L1 local cache in front of an L2 Redis.
+
+The patterns, in order of how often you'll use them:
+
+- **Cache-aside (lazy loading)** — the default. The app checks the cache; on a miss it loads from the DB and populates the cache. Simple, and it only caches what's actually used. Downsides: the first request always misses (cold cache), and data can go stale.
+- **Write-through** — write to cache and DB together on every write. The cache stays fresh; writes are slower.
+- **Write-behind (write-back)** — write to the cache and flush to the DB asynchronously. Fast writes, but a crash before the flush loses data — only for cases where some loss is tolerable.
+
+**Invalidation** comes in two flavors. **Time-based (TTL)** is simple: set an expiry, accept a staleness window. **Event-based** is precise: invalidate the key when the underlying data changes — more code, and easy to miss a write path. Most teams default to TTL and add event invalidation only for the few keys that must be fresh.
+
+**Hit rate** is the metric that tells you whether any of this is working. A low hit rate means you're paying the cache's complexity *and* still hitting the DB. Also watch for **cache stampede / thundering herd**: a hot key expires and a flood of requests all miss and slam the DB at once — mitigate with a lock, request coalescing, or stale-while-revalidate.
+
+**The caveat that matters for your auction platform:** caching is for data that tolerates staleness — listings, descriptions, images, completed-auction history. It is *dangerous* for the live high bid, which must be strongly consistent; you can never show or accept a bid against a stale current price. So classify your data explicitly: cache the cold, read-heavy stuff aggressively, and keep live bid state authoritative with no stale reads. Conflating the two is how auction platforms generate disputes.
+
+### Data access patterns — what ties it all together
+
+Everything above gets prioritized by **which endpoints are actually hot.** Instrument and find your traffic distribution — it's almost always heavily skewed, with a few endpoints serving most traffic. Then ask whether the system is read-heavy or write-heavy: read-heavy means caching and read replicas pay off; write-heavy means indexes start to hurt and caching gets harder. You index for the hot read paths, cache the hot read results, and leave the cold 90% alone — optimizing the cold path is wasted effort.
+
+!Screenshot 2026-06-14 at 3.16.52 PM.png

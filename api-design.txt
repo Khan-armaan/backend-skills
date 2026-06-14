@@ -1,0 +1,246 @@
+# RESTful API Design Guidelines
+
+## What is REST?
+
+**REST** (Representational State Transfer) is an architectural style for designing networked applications. It relies on a stateless, client-server communication protocol.
+
+### Core Concepts
+
+**Resources**: Resources are the fundamental concept in REST. They represent entities or objects in your system (users, products, orders, etc.). Each resource is identified by a unique URI.
+
+**Representation**: Resources are represented in specific formats such as JSON, XML, or HTML. JSON is the most common format in modern APIs.
+
+**State**: The current state of a resource. When a client makes a request, the state of the resource is transferred between the client and server, hence "Representational State Transfer."
+
+## URL Design Patterns
+
+### Resource Naming
+
+Resources must be represented as **nouns in plural form**:
+
+```
+✓ /users
+✓ /products
+✓ /orders
+
+✗ /getUsers
+✗ /user
+✗ /createProduct
+
+```
+
+### Hierarchical Relationships
+
+Use hierarchical URLs to represent relationships between different types of resources:
+
+```
+/users/{userId}/orders
+/products/{productId}/reviews
+/organizations/{orgId}/teams/{teamId}/members
+
+```
+
+### Formatting Conventions
+
+- Use **hyphens** for spacing in URLs (not underscores)
+- Keep URLs lowercase
+- Be consistent across all endpoints
+
+```
+✓ /product-categories
+✓ /user-profiles
+✓ /order-history
+
+✗ /product_categories
+✗ /ProductCategories
+✗ /userProfiles
+
+```
+
+## HTTP Methods and CRUD Operations
+
+Map HTTP methods to CRUD operations consistently:
+
+| HTTP Method | Operation | Example |
+| --- | --- | --- |
+| GET | Read/Retrieve | `GET /users` or `GET /users/{id}` |
+| POST | Create | `POST /users` |
+| PUT | Update (full replacement) | `PUT /users/{id}` |
+| PATCH | Update (partial) | `PATCH /users/{id}` |
+| DELETE | Delete | `DELETE /users/{id}` |
+
+### Use PATCH for Partial Updates
+
+Most of the time, use PATCH when only partial changes are needed:
+
+```
+PATCH /users/123
+{
+  "email": "newemail@example.com"
+}
+
+```
+
+This is more efficient than PUT, which typically requires sending the entire resource representation.
+
+### Custom Actions
+
+For actions that do not fit standard CRUD operations (like sending an email, activating a user, or generating a report), use POST with a descriptive action endpoint:
+
+```
+POST /users/{userId}/send-welcome-email
+POST /orders/{orderId}/cancel
+POST /products/{productId}/publish
+
+```
+
+## RESTful Standards
+
+### Resource Identification
+
+Use nouns to identify resources, not verbs:
+
+```
+✓ /users/{userId}
+✓ /products/{productId}
+
+✗ /getUser/{userId}
+✗ /fetchProduct/{productId}
+
+```
+
+### List Endpoints with Pagination
+
+All GET APIs that return lists should be paginated to improve performance and usability:
+
+```
+GET /users?page=2&limit=20
+
+```
+
+**Query Parameters:**
+
+- `page`: The page number to retrieve (default: 1)
+- `limit`: Number of items per page (default: 20)
+
+**Response Example:**
+
+```json
+{
+  "data": [...],
+  "pagination": {
+    "page": 2,
+    "limit": 20,
+    "total": 150,
+    "totalPages": 8
+  }
+}
+
+```
+
+### Sorting
+
+Implement sorting using query parameters:
+
+```
+GET /products?sortBy=price&sortOrder=desc
+GET /users?sortBy=createdAt&sortOrder=asc
+
+```
+
+**Parameters:**
+
+- `sortBy`: The field to sort by (e.g., name, price, createdAt)
+- `sortOrder`: Direction of sort (asc or desc)
+
+### Filtering
+
+Allow filtering using query parameters:
+
+```
+GET /products?category=electronics&minPrice=100&maxPrice=500
+GET /users?status=active&role=admin
+
+```
+
+Use descriptive parameter names that clearly indicate what is being filtered.
+
+## Consistency Principles
+
+### Follow Consistent Patterns
+
+All APIs should follow the same patterns and conventions:
+
+- Use the same naming conventions throughout
+- Apply the same error response format
+- Use consistent parameter names across endpoints
+- Maintain uniform authentication methods
+
+### Provide Sensible Defaults
+
+Make APIs easier to use by providing good default values:
+
+```
+GET /products
+// Defaults: page=1, limit=20, sortOrder=asc
+
+```
+
+This allows clients to make simple requests without specifying every parameter.
+
+### Avoid Abbreviations
+
+Use clear, descriptive names instead of abbreviations:
+
+```
+✓ /user-profiles
+✓ /product-categories
+✓ /shipping-addresses
+
+✗ /usr-prof
+✗ /prod-cat
+✗ /ship-addr
+
+```
+
+### Make It Intuitive
+
+Design your API to be self-explanatory:
+
+- Use clear, meaningful resource names
+- Follow common REST conventions
+- Provide helpful error messages
+- Include proper HTTP status codes
+
+## Best Practices Summary
+
+1. **Use plural nouns** for resource names
+2. **Use hyphens** for multi-word URLs, not underscores
+3. **Represent hierarchies** in URL structure
+4. **Use PATCH** for partial updates
+5. **Paginate** all list endpoints
+6. **Support sorting and filtering** via query parameters
+7. **Use POST** for custom actions that are not CRUD
+8. **Maintain consistency** across all endpoints
+9. **Provide defaults** to simplify API usage
+10. **Avoid abbreviations** and keep names intuitive
+
+## Example API Structure
+
+```
+GET    /users                          # List all users (paginated)
+GET    /users/{id}                     # Get specific user
+POST   /users                          # Create new user
+PATCH  /users/{id}                     # Update user partially
+DELETE /users/{id}                     # Delete user
+
+GET    /users/{id}/orders              # List user's orders
+POST   /users/{id}/send-notification   # Send notification (custom action)
+
+GET    /products?category=electronics&sortBy=price&sortOrder=asc&page=1&limit=20
+
+```
+
+---
+
+By following these guidelines, you create APIs that are predictable, maintainable, and pleasant to work with for developers.

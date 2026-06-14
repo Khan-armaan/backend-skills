@@ -1,0 +1,304 @@
+# Cache Eviction Policies: A Practical Guide
+
+Caching is a fundamental technique for improving application performance by storing frequently accessed data in fast-access storage. However, since cache memory is limited, we need eviction policies to determine which data to remove when the cache is full.
+
+## Common Cache Eviction Policies
+
+### 1. No Eviction
+
+With a no eviction policy, the cache never automatically removes entries. Once the cache reaches its maximum capacity, attempts to add new items will fail.
+
+**Characteristics:**
+
+- Cache grows until it hits a predefined limit
+- New cache writes fail when capacity is reached
+- Existing cached data remains indefinitely
+
+**When to use:**
+
+- Critical data that must always be available
+- Scenarios where cache misses are unacceptable
+- Systems with predictable, bounded data sets
+
+**Example:** Configuration data, feature flags, or application constants that rarely change and must always be cached.
+
+### 2. LRU (Least Recently Used)
+
+LRU evicts the item that hasn't been accessed for the longest time. It assumes that recently accessed data is more likely to be accessed again soon.
+
+**How it works:**
+
+- Tracks access time for each cache entry
+- When eviction is needed, removes the entry with the oldest access time
+- Updates access time on both reads and writes
+
+**Pros:**
+
+- Simple to understand and implement
+- Works well for temporal locality patterns
+- Balances performance and memory usage
+
+**Cons:**
+
+- Doesn't account for access frequency
+- Can evict frequently used data that hasn't been accessed recently
+- Requires tracking access timestamps
+
+**When to use:**
+
+- General-purpose caching scenarios
+- Data with temporal access patterns
+- When recent data is more valuable than frequently accessed data
+
+### 3. LFU (Least Frequently Used)
+
+LFU evicts the item that has been accessed the fewest number of times. It prioritizes data based on access frequency rather than recency.
+
+**How it works:**
+
+- Maintains an access counter for each cache entry
+- Evicts the entry with the lowest counter value
+- Increments counter on each access
+
+**Pros:**
+
+- Keeps frequently accessed items cached longer
+- Better for scenarios with hot data
+- Protects popular items from eviction
+
+**Cons:**
+
+- Old entries can stick around if they were once popular
+- New popular items may be evicted before they establish frequency
+- More complex to implement efficiently
+
+**When to use:**
+
+- Data with clear popularity patterns
+- Long-running caches where frequency matters more than recency
+- Scenarios with stable access patterns
+
+### 4. TTL (Time To Live)
+
+TTL-based eviction removes entries after a specified time period, regardless of access patterns. Each entry has an expiration timestamp.
+
+**How it works:**
+
+- Assigns an expiration time when data is cached
+- Automatically removes entries when TTL expires
+- Can be combined with other eviction policies
+
+**Pros:**
+
+- Ensures data freshness
+- Simple to implement and reason about
+- Prevents stale data from persisting
+
+**Cons:**
+
+- May evict useful data prematurely
+- Requires accurate TTL estimation
+- Can cause cache misses if TTL is too short
+
+**When to use:**
+
+- Data that becomes stale over time
+- External API responses
+- Session data
+- Rate limiting windows
+
+## Practical Use Cases
+
+### Database Query Caching (Multiple Joins)
+
+Complex database queries with multiple joins are expensive operations that benefit significantly from caching.
+
+**Recommended approach:** LRU + TTL
+
+```
+Cache Key: hash(SQL query + parameters)
+TTL: 5-15 minutes (depending on data freshness requirements)
+Eviction: LRU when cache is full
+
+```
+
+**Why this combination:**
+
+- TTL ensures data doesn't become too stale
+- LRU handles cache capacity by removing old queries
+- Recent queries are more likely to be repeated
+- Protects database from repeated expensive joins
+
+**Implementation considerations:**
+
+- Invalidate cache on writes to relevant tables
+- Use query result hash as cache key
+- Monitor cache hit rates to tune TTL
+- Consider different TTLs for different query types
+
+### String Session API Caching
+
+Storing session tokens or API authentication strings requires balancing security and performance.
+
+**Recommended approach:** TTL + LRU
+
+```
+Cache Key: session_token or API_key
+TTL: Match session expiration (e.g., 30 minutes)
+Eviction: LRU as secondary policy
+
+```
+
+**Why this combination:**
+
+- TTL aligns with session lifecycle
+- Automatic cleanup of expired sessions
+- LRU handles memory constraints
+- Security through automatic expiration
+
+**Implementation considerations:**
+
+- TTL should match or be shorter than actual session expiration
+- Include user metadata to avoid database lookups
+- Implement secure key storage
+- Log session cache misses for security monitoring
+
+### Rate Limiting
+
+Rate limiting controls the number of requests a user or IP can make within a time window.
+
+**Recommended approach:** TTL (primary)
+
+```
+Cache Key: user_id:endpoint or ip_address:endpoint
+Value: request_count
+TTL: Rate limit window (e.g., 60 seconds for 100 requests/minute)
+
+```
+
+**Why TTL is ideal:**
+
+- Time windows align perfectly with TTL
+- Automatic window reset when TTL expires
+- Simple counter increment logic
+- No need for manual cleanup
+
+**Implementation patterns:**
+
+**Sliding Window:**
+
+```
+Key: user:123:api_endpoint
+Value: timestamp_list of recent requests
+TTL: window duration
+Check: count requests in last N seconds
+
+```
+
+**Fixed Window:**
+
+```
+Key: user:123:api_endpoint:minute_bucket
+Value: request_count
+TTL: 60 seconds
+Increment on each request
+
+```
+
+**Implementation considerations:**
+
+- Use atomic increment operations
+- Set TTL on first request in window
+- Consider distributed caching (Redis) for multi-server deployments
+- Implement graceful degradation if cache is unavailable
+
+## Choosing the Right Policy
+
+**Use No Eviction when:**
+
+- Data set size is bounded and predictable
+- All data must remain cached
+- Cache misses are unacceptable
+
+**Use LRU when:**
+
+- General-purpose caching
+- Temporal access patterns exist
+- Recent data is more valuable
+
+**Use LFU when:**
+
+- Clear hot/cold data patterns
+- Frequency matters more than recency
+- Long-running stable workloads
+
+**Use TTL when:**
+
+- Data freshness is critical
+- Natural expiration exists (sessions, tokens)
+- Time-bound operations (rate limiting)
+
+**Combine policies when:**
+
+- Multiple requirements exist (freshness + capacity)
+- Example: TTL for freshness + LRU for capacity management
+
+## Best Practices
+
+1. **Monitor cache performance:** Track hit rates, eviction rates, and memory usage
+2. **Start conservative:** Begin with shorter TTLs and relax as needed
+3. **Test under load:** Cache behavior changes significantly under different load patterns
+4. **Plan for cache failures:** Implement fallback mechanisms
+5. **Use appropriate cache layers:** Memory, Redis, CDN based on use case
+6. **Invalidate proactively:** Don't rely solely on TTL for data that changes
+7. **Consider distributed systems:** Ensure eviction policies work across multiple cache instances
+
+# Cache Eviction Policies: Quick Reference
+
+## Overview
+
+Caching improves performance by storing frequently accessed data. Eviction policies determine what to remove when cache is full.
+
+## The 4 Main Policies
+
+**No Eviction** - Never removes data automatically. New writes fail when full.
+
+- Use for: Critical data, config files, bounded data sets
+
+**LRU (Least Recently Used)** - Removes items not accessed for the longest time.
+
+- Use for: General caching, recent data is more valuable
+
+**LFU (Least Frequently Used)** - Removes items accessed the least often.
+
+- Use for: Data with clear popularity patterns, hot/cold data
+
+**TTL (Time To Live)** - Removes items after a set time period.
+
+- Use for: Stale data, sessions, rate limiting, API responses
+
+## Quick Use Case Guide
+
+**DB Query Caching (Complex Joins)**
+
+- Policy: LRU + TTL
+- TTL: 5-15 minutes
+- Why: Keeps recent queries, ensures freshness, protects DB from expensive joins
+
+**Session API Caching**
+
+- Policy: TTL + LRU
+- TTL: Match session expiration (e.g., 30 min)
+- Why: Auto cleanup, aligns with session lifecycle, handles capacity
+
+**Rate Limiting**
+
+- Policy: TTL (primary)
+- TTL: Rate window (e.g., 60 sec for per-minute limits)
+- Why: Perfect match for time windows, auto resets, simple counters
+
+## Key Takeaways
+
+- Combine policies for better results (e.g., TTL for freshness + LRU for capacity)
+- Monitor hit rates and adjust TTLs based on actual usage
+- Start with conservative TTLs and increase as needed
