@@ -1,0 +1,16 @@
+{
+  "name": "backend-skills",
+  "owner": {
+    "name": "khan-armaan"
+  },
+  "metadata": {
+    "description": "Backend engineering reference skills for Claude."
+  },
+  "plugins": [
+    {
+      "name": "backend-skills",
+      "source": "./",
+      "description": "Backend engineering reference skills that load into context only when relevant."
+    }
+  ]
+}

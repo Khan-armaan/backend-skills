@@ -1,4 +1,9 @@
-Security in backend 
+---
+name: security
+description: "Backend security: authentication vs authorization, password hashing (Argon2id, bcrypt, salt, pepper), stateful sessions vs stateless JWTs, OAuth2/OIDC with PKCE, rate limiting, BOLA/BFLA/IDOR authorization flaws and mitigations, XSS, CSRF, security headers, secrets handling, and a threat-modeling mindset. Use when implementing login, sessions or tokens, writing authorization checks, handling secrets, or doing a security review of backend code."
+---
+
+# Security in Backend
 
 ### Authentication vs Authorization
 

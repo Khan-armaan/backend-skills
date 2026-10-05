@@ -1,3 +1,8 @@
+---
+name: full-text-search
+description: "Full-text search internals and trade-offs: inverted indexes, analysis/tokenization, relevance scoring, fuzzy matching and typo tolerance in Elasticsearch, PostgreSQL full-text search (tsvector, tsquery, trigram typo handling), and when to use which. Use when implementing search features, choosing between Elasticsearch and Postgres search, or tuning relevance and fuzzy matching."
+---
+
 # Full-Text Search: A Deep Dive
 
 Full-text search is a sophisticated technique for searching text data that goes far beyond simple pattern matching. Let me explain how systems like Elasticsearch work and how you can achieve similar capabilities in PostgreSQL.

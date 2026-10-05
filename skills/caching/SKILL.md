@@ -1,3 +1,8 @@
+---
+name: caching
+description: "Cache eviction policies (no eviction, LRU, LFU, TTL) with practical use cases such as caching multi-join database queries, session/API caching and rate limiting, guidance on choosing a policy, and best practices. Use when adding a cache (e.g. Redis or in-memory), choosing eviction or TTL settings, or reviewing caching behaviour."
+---
+
 # Cache Eviction Policies: A Practical Guide
 
 Caching is a fundamental technique for improving application performance by storing frequently accessed data in fast-access storage. However, since cache memory is limited, we need eviction policies to determine which data to remove when the cache is full.

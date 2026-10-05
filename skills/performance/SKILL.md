@@ -1,3 +1,10 @@
+---
+name: performance
+description: "Backend performance fundamentals: latency vs throughput, percentiles and tail latency, utilization and queuing, measuring with profiling and distributed tracing, database bottlenecks (N+1 queries, indexes, EXPLAIN ANALYZE, connection pooling), caching layers and invalidation, cache stampedes, and data access patterns. Use when diagnosing slow endpoints or queries, planning optimizations, or reviewing code for performance problems."
+---
+
+# Backend Performance
+
 ### What "fast" means — and where latency comes from
 
 Your request path is exactly the right model: click → server → DB → server → external service → server → client. The property that matters is that **latency is additive along the chain, and the slowest hop dominates.** A single user-facing request often *fans out* into many backend calls, so the user doesn't experience your average component — they experience the sum, and they feel the worst hop.

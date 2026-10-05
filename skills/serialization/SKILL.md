@@ -1,3 +1,8 @@
+---
+name: serialization
+description: "Data serialization and deserialization: JSON, XML and YAML, serializing and parsing in Node.js (Express) and Python (Flask, FastAPI, Pydantic), the frontend-to-backend request/response cycle, validating deserialized data, Content-Type headers, special types like dates, plus performance and security considerations. Use when converting between objects and wire formats, building request/response models, or debugging parsing and encoding issues."
+---
+
 # Data Serialization & Deserialization in Backend Development
 
 ## Overview
