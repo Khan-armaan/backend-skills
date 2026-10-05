@@ -1,3 +1,8 @@
+---
+name: background-jobs
+description: "Background jobs and asynchronous task processing: why to offload work from the request path, common use cases (emails, image/video processing, reports, push notifications), queue/worker/broker architecture, popular technologies, retries, performance and security considerations. Use when a request does slow or unreliable work that should run asynchronously, or when designing job queues and workers."
+---
+
 # Background Jobs and Asynchronous Task Processing
 
 ## Overview

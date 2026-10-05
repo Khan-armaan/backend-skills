@@ -1,3 +1,8 @@
+---
+name: api-design
+description: "RESTful API design guidelines: resource naming and URL patterns, hierarchical relationships, HTTP methods mapped to CRUD, PATCH for partial updates, custom actions, list endpoints with pagination, sorting and filtering, and consistency principles, with an example API structure. Use when designing or naming REST endpoints, adding list/pagination/filter parameters, or reviewing an API for consistency."
+---
+
 # RESTful API Design Guidelines
 
 ## What is REST?

@@ -1,0 +1,9 @@
+{
+  "name": "backend-skills",
+  "description": "Backend engineering reference skills: API design, HTTP, routing, layered architecture, validation, serialization, error handling, caching, security, performance, concurrency, background jobs, webhooks, search, observability and the Twelve-Factor App. Each skill loads only when the task needs it.",
+  "version": "1.0.0",
+  "author": {
+    "name": "khan-armaan"
+  },
+  "repository": "https://github.com/khan-armaan/backend-skills"
+}

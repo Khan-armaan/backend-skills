@@ -1,3 +1,8 @@
+---
+name: routing
+description: "Backend routing: HTTP methods and intent, path, dynamic and query parameters, nested routes, API versioning strategies (URL path, header, query parameter), catch-all and 404 routes, wildcard matching, framework-specific examples, and best practices. Use when defining routes, adding API versioning, or organizing a router."
+---
+
 # Backend Routing Documentation
 
 ## Overview

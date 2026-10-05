@@ -1,3 +1,10 @@
+---
+name: concurrency-parallelism
+description: "Concurrency vs parallelism for backend services: I/O-bound vs CPU-bound work, threads, the event loop and why blocking it is fatal, race conditions and lost updates (including in single-threaded async code), and the fixes such as atomic updates, locks and optimistic concurrency. Use when choosing a concurrency model, debugging races or lost updates, or writing code that mutates shared state across concurrent requests."
+---
+
+# Concurrency and Parallelism in Backends
+
 ### The core asymmetry that motivates everything
 
 A backend's job is to juggle many requests at once, and the reason it *can* is that a single request spends most of its life **waiting**, not computing. When you handle a request you might do a DB query, call another service, read a file, write a log — and each of those means your code sits idle while data travels over a wire or a disk head moves. The CPU, meanwhile, is absurdly fast.
